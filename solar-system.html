@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive 3D Solar System</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            font-family: 'Inter', sans-serif;
+            background-color: #000010;
+        }
+        canvas {
+            display: block;
+        }
+        #info-panel {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: rgba(0, 0, 20, 0.85);
+            color: white;
+            padding: 2rem;
+            border-radius: 1rem;
+            max-width: 500px;
+            width: 90%;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+            transition: opacity 0.3s ease, visibility 0.3s ease;
+        }
+        .info-title {
+            font-size: 2.5rem;
+            font-weight: bold;
+            margin-bottom: 1rem;
+            text-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+        }
+        .info-content {
+            font-size: 1rem;
+            line-height: 1.6;
+        }
+        .info-facts {
+            margin-top: 1.5rem;
+            padding-top: 1rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        .info-facts h3 {
+            font-size: 1.2rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+        .info-facts ul {
+            list-style-type: none;
+            padding-left: 0;
+        }
+        .info-facts li {
+            margin-bottom: 0.5rem;
+        }
+        #close-button {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            background: rgba(255, 255, 255, 0.1);
+            border: none;
+            color: white;
+            font-size: 1.5rem;
+            width: 2.5rem;
+            height: 2.5rem;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background-color 0.2s ease;
+            z-index: 10;
+        }
+        #close-button:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+        #instructions {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: rgba(255, 255, 255, 0.7);
+            background-color: rgba(0, 0, 0, 0.5);
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            pointer-events: none;
+        }
+        #gemini-result {
+             max-height: 70vh;
+             overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+    <div id="container"></div>
+
+    <div id="info-panel" class="hidden opacity-0 visibility-hidden">
+        <button id="close-button">&times;</button>
+        
+        <!-- View 1: Main Info -->
+        <div id="main-info-content">
+            <h2 id="info-title" class="info-title"></h2>
+            <p id="info-description" class="info-content"></p>
+            <div class="info-facts">
+                 <h3>Fast Facts</h3>
+                 <ul id="info-facts-list"></ul>
+            </div>
+            <!-- Gemini Actions -->
+            <div id="gemini-actions" class="mt-6 pt-4 border-t border-white/20 flex flex-col sm:flex-row gap-4">
+                <button id="story-button" class="flex-1 bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-4 rounded-lg transition-colors shadow-lg">✨ Tell me a story</button>
+                <button id="fact-button" class="flex-1 bg-teal-500 hover:bg-teal-600 text-white font-bold py-3 px-4 rounded-lg transition-colors shadow-lg">✨ Reveal a secret</button>
+            </div>
+        </div>
+    
+        <!-- View 2: Gemini Result -->
+        <div id="gemini-result" class="hidden">
+            <div class="flex items-center mb-4">
+                <button id="back-button" class="mr-4 bg-white/10 hover:bg-white/20 rounded-full p-2 w-10 h-10 flex-shrink-0 flex items-center justify-center transition-colors">&larr;</button>
+                <h2 id="gemini-title" class="info-title text-2xl truncate"></h2>
+            </div>
+            <div id="loading-spinner" class="flex justify-center items-center h-48">
+                 <div class="animate-spin rounded-full h-16 w-16 border-b-2 border-white"></div>
+            </div>
+            <div id="gemini-content" class="info-content"></div>
+        </div>
+    </div>
+    
+    <div id="instructions">
+        Click and drag to orbit. Scroll to zoom. Click a planet to learn more.
+    </div>
+
+    <script async src="https://unpkg.com/es-module-shims@1.6.3/dist/es-module-shims.js"></script>
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://cdn.jsdelivr.net/npm/three@0.157.0/build/three.module.js",
+                "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.157.0/examples/jsm/"
+            }
+        }
+    </script>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+        // --- SCENE SETUP ---
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 2000);
+        camera.position.set(0, 50, 150);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.getElementById('container').appendChild(renderer.domElement);
+
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+        controls.minDistance = 20;
+        controls.maxDistance = 800;
+
+        // --- LIGHTING ---
+        const ambientLight = new THREE.AmbientLight(0x404040, 1.5);
+        scene.add(ambientLight);
+
+        const pointLight = new THREE.PointLight(0xffffff, 3, 1000, 1);
+        pointLight.position.set(0, 0, 0);
+        scene.add(pointLight);
+
+        // --- DATA ---
+        const planetData = {
+            sun: { name: 'Sun', description: 'The star at the center of our Solar System. It is a nearly perfect ball of hot plasma, heated to incandescence by nuclear fusion reactions in its core.', facts: ['Diameter: 1.39 million km', 'Age: 4.6 billion years', 'Temperature: 5,505 °C (Surface)', 'It accounts for 99.86% of the total mass of the Solar System.'] },
+            mercury: { name: 'Mercury', description: 'The smallest planet in our solar system and nearest to the Sun, it has the swiftest orbit. It has a cratered surface, resembling the Moon.', facts: ['Diameter: 4,879 km', 'Day Length: 59 Earth days', 'Year Length: 88 Earth days', 'Known for extreme temperature swings.'] },
+            venus: { name: 'Venus', description: 'The second planet from the Sun, known for its thick, toxic atmosphere that traps heat in a runaway greenhouse effect, making it the hottest planet.', facts: ['Diameter: 12,104 km', 'Day Length: 243 Earth days (longer than its year!)', 'Year Length: 225 Earth days', 'Rotates backwards compared to most other planets.'] },
+            earth: { name: 'Earth', description: 'Our home planet, the only place we know of so far that’s inhabited by living things. It\'s the third planet from the Sun and the fifth largest.', facts: ['Diameter: 12,742 km', 'Day Length: 24 hours', 'Year Length: 365.25 days', 'The only planet with liquid water on its surface.'] },
+            mars: { name: 'Mars', description: 'The "Red Planet" is the fourth planet from the Sun. Its reddish appearance is due to iron oxide (rust) on its surface. It has polar ice caps, canyons, and extinct volcanoes.', facts: ['Diameter: 6,779 km', 'Day Length: 24.6 hours', 'Year Length: 687 Earth days', 'Home to Olympus Mons, the largest volcano in the solar system.'] },
+            jupiter: { name: 'Jupiter', description: 'The largest planet in our solar system, a gas giant primarily composed of hydrogen and helium. It is famous for its Great Red Spot, a giant storm.', facts: ['Diameter: 139,820 km', 'Day Length: 9.9 hours (fastest rotation)', 'Year Length: 11.9 Earth years', 'Has the most moons of any planet in our solar system.'] },
+            saturn: { name: 'Saturn', description: 'The sixth planet from the Sun and the second-largest, known for its spectacular ring system made of ice particles, dust, and rock.', facts: ['Diameter: 116,460 km', 'Day Length: 10.7 hours', 'Year Length: 29.5 Earth years', 'Its rings are incredibly thin, only about 20 meters thick.'] },
+            uranus: { name: 'Uranus', description: 'The seventh planet from the Sun, an ice giant with a unique feature: it rotates on its side, with its axis tilted almost parallel to its orbit.', facts: ['Diameter: 50,724 km', 'Day Length: 17.2 hours', 'Year Length: 84 Earth years', 'Known as the "ice giant" due to its composition.'] },
+            neptune: { name: 'Neptune', description: 'The eighth and most distant planet from the Sun. It is a dark, cold, and windy ice giant. It has the strongest winds in the solar system.', facts: ['Diameter: 49,244 km', 'Day Length: 16.1 hours', 'Year Length: 164.8 Earth years', 'Was the first planet located through mathematical prediction.'] },
+        };
+
+        // --- OBJECT CREATION ---
+        const planets = [];
+        const orbits = [];
+        const sun = new THREE.Mesh(new THREE.SphereGeometry(15, 64, 64), new THREE.MeshBasicMaterial({ color: 0xffdd00, map: createSunTexture() }));
+        sun.userData = planetData.sun;
+        scene.add(sun);
+        planets.push(sun);
+
+        function createPlanet(name, color, size, distance) {
+            const planet = new THREE.Mesh(new THREE.SphereGeometry(size, 32, 32), new THREE.MeshStandardMaterial({ color }));
+            planet.position.x = distance;
+            planet.userData = planetData[name];
+            planet.name = name;
+            scene.add(planet);
+            planets.push(planet);
+            const orbit = new THREE.Mesh(new THREE.RingGeometry(distance - 0.1, distance + 0.1, 128), new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide, opacity: 0.2, transparent: true }));
+            orbit.rotation.x = -Math.PI / 2;
+            scene.add(orbit);
+            orbits.push({ planet, distance, speed: 0.5 / Math.sqrt(distance) });
+            return planet;
+        }
+
+        function createSaturnRings(planet, innerRadius, outerRadius) {
+            const ring = new THREE.Mesh(new THREE.RingGeometry(innerRadius, outerRadius, 64), new THREE.MeshBasicMaterial({ color: 0xaaa_aaa, side: THREE.DoubleSide, transparent: true, opacity: 0.8 }));
+            ring.rotation.x = Math.PI / 2.5;
+            planet.add(ring);
+        }
+
+        createPlanet('mercury', 0xaaaaaa, 1, 30);
+        createPlanet('venus', 0xffd700, 2.5, 50);
+        createPlanet('earth', 0x0077ff, 2.6, 75);
+        createPlanet('mars', 0xff5733, 1.5, 100);
+        const jupiter = createPlanet('jupiter', 0xffa500, 8, 150);
+        const saturn = createPlanet('saturn', 0xf0e68c, 6.5, 220);
+        createSaturnRings(saturn, 8, 12);
+        createPlanet('uranus', 0x00ffff, 4, 290);
+        createPlanet('neptune', 0x0000ff, 3.8, 350);
+
+        // --- BACKGROUND STARS ---
+        function createStars() {
+            const starVertices = [];
+            for (let i = 0; i < 10000; i++) starVertices.push((Math.random() - 0.5) * 2000, (Math.random() - 0.5) * 2000, (Math.random() - 0.5) * 2000);
+            const starGeometry = new THREE.BufferGeometry();
+            starGeometry.setAttribute('position', new THREE.Float32BufferAttribute(starVertices, 3));
+            const stars = new THREE.Points(starGeometry, new THREE.PointsMaterial({ color: 0xffffff, size: 0.5, transparent: true, opacity: 0.8 }));
+            scene.add(stars);
+        }
+        createStars();
+        
+        // --- TEXTURE GENERATION ---
+        function createSunTexture() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 256; canvas.height = 256;
+            const context = canvas.getContext('2d');
+            const gradient = context.createRadialGradient(128, 128, 0, 128, 128, 128);
+            gradient.addColorStop(0, 'rgba(255, 220, 100, 1)');
+            gradient.addColorStop(0.5, 'rgba(255, 165, 0, 1)');
+            gradient.addColorStop(1, 'rgba(255, 100, 0, 1)');
+            context.fillStyle = gradient;
+            context.fillRect(0, 0, 256, 256);
+            return new THREE.CanvasTexture(canvas);
+        }
+
+        // --- INTERACTIVITY ---
+        const raycaster = new THREE.Raycaster();
+        const mouse = new THREE.Vector2();
+        window.addEventListener('click', (event) => {
+            if (infoPanel.contains(event.target)) return;
+            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+            raycaster.setFromCamera(mouse, camera);
+            const intersects = raycaster.intersectObjects(planets);
+            if (intersects.length > 0) showInfo(intersects[0].object.userData);
+        });
+
+        // --- UI ---
+        const infoPanel = document.getElementById('info-panel');
+        const mainInfoContent = document.getElementById('main-info-content');
+        const geminiResultEl = document.getElementById('gemini-result');
+        const geminiContentEl = document.getElementById('gemini-content');
+        const geminiTitleEl = document.getElementById('gemini-title');
+        const loadingSpinner = document.getElementById('loading-spinner');
+        const closeButton = document.getElementById('close-button');
+        const backButton = document.getElementById('back-button');
+        const storyButton = document.getElementById('story-button');
+        const factButton = document.getElementById('fact-button');
+        let currentPlanetData = null;
+
+        function showInfo(data) {
+            currentPlanetData = data;
+            document.getElementById('info-title').textContent = data.name;
+            document.getElementById('info-description').textContent = data.description;
+            const factsListEl = document.getElementById('info-facts-list');
+            factsListEl.innerHTML = '';
+            data.facts.forEach(fact => {
+                const li = document.createElement('li');
+                li.textContent = `• ${fact}`;
+                factsListEl.appendChild(li);
+            });
+            mainInfoContent.style.display = 'block';
+            geminiResultEl.style.display = 'none';
+            infoPanel.classList.remove('hidden', 'opacity-0', 'visibility-hidden');
+        }
+
+        function hideInfo() {
+            infoPanel.classList.add('opacity-0', 'visibility-hidden');
+            setTimeout(() => infoPanel.classList.add('hidden'), 300);
+            currentPlanetData = null;
+        }
+        closeButton.addEventListener('click', hideInfo);
+        
+        backButton.addEventListener('click', () => {
+            mainInfoContent.style.display = 'block';
+            geminiResultEl.style.display = 'none';
+        });
+
+        storyButton.addEventListener('click', () => {
+            const prompt = `Write a short, thrilling science fiction story (around 150 words) about a journey to the planet ${currentPlanetData.name}.`;
+            generateContent(`✨ A Story of ${currentPlanetData.name}`, prompt);
+        });
+
+        factButton.addEventListener('click', () => {
+            const prompt = `Tell me a surprising or little-known scientific fact about the planet ${currentPlanetData.name}. Make it sound like a secret being revealed.`;
+            generateContent(`✨ A Secret of ${currentPlanetData.name}`, prompt);
+        });
+
+        // --- GEMINI API CALL ---
+        async function generateContent(title, prompt) {
+            mainInfoContent.style.display = 'none';
+            geminiResultEl.style.display = 'block';
+            loadingSpinner.style.display = 'block';
+            geminiContentEl.innerHTML = '';
+            geminiTitleEl.textContent = title;
+
+            const apiKey = "";
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
+            const payload = { contents: [{ parts: [{ text: prompt }] }] };
+
+            let response;
+            for (let i = 0, delay = 1000; i < 5; i++, delay *= 2) {
+                try {
+                    response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+                    if (response.ok) break;
+                    if (response.status !== 429) throw new Error(await response.text());
+                    await new Promise(resolve => setTimeout(resolve, delay));
+                } catch (error) {
+                    console.error('Fetch error:', error);
+                    if (i === 4) response = null;
+                    await new Promise(resolve => setTimeout(resolve, delay));
+                }
+            }
+            
+            loadingSpinner.style.display = 'none';
+
+            if (!response || !response.ok) {
+                geminiContentEl.innerHTML = '<p class="text-red-400">Sorry, the AI is busy dreaming of electric sheep. Please try again later.</p>';
+                return;
+            }
+
+            try {
+                const result = await response.json();
+                const text = result.candidates?.[0]?.content?.parts?.[0]?.text;
+                if (text) {
+                    let htmlText = text.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+                    htmlText = htmlText.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/\n/g, '<br>');
+                    geminiContentEl.innerHTML = `<p>${htmlText}</p>`;
+                } else {
+                    throw new Error("Invalid response structure.");
+                }
+            } catch (e) {
+                console.error('Error processing Gemini response:', e);
+                geminiContentEl.innerHTML = '<p class="text-yellow-400">The AI returned a cosmic mystery. Please try again.</p>';
+            }
+        }
+
+        // --- ANIMATION & RESIZE ---
+        const clock = new THREE.Clock();
+        function animate() {
+            requestAnimationFrame(animate);
+            const elapsedTime = clock.getElapsedTime();
+            planets.forEach(p => p.rotation.y += 0.005);
+            sun.rotation.y += 0.001;
+            orbits.forEach(o => {
+                o.planet.position.x = Math.cos(elapsedTime * o.speed) * o.distance;
+                o.planet.position.z = Math.sin(elapsedTime * o.speed) * o.distance;
+            });
+            controls.update();
+            renderer.render(scene, camera);
+        }
+        animate();
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+    </script>
+</body>
+</html>
+
