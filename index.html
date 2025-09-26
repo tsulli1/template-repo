@@ -3,34 +3,95 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>My Web App</title>
+    <title>Celestial Explorer</title>
     <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-    <div class="container">
-        <header>
-            <h1>Welcome to My Web App</h1>
-            <nav>
-                <ul>
-                    <li><a href="#home">Home</a></li>
+    <div class="page">
+        <header class="site-header">
+            <div class="logo">Celestial Explorer</div>
+            <nav aria-label="Primary">
+                <ul class="nav-links">
                     <li><a href="#about">About</a></li>
-                    <li><a href="#contact">Contact</a></li>
+                    <li><a href="#features">Features</a></li>
+                    <li><a href="#experience">Experience</a></li>
+                    <li><a href="solar-system.html">Launch App</a></li>
                 </ul>
             </nav>
         </header>
-        
+
         <main>
-            <section id="home">
-                <h2>Home Section</h2>
-                <p>Welcome to our web application!</p>
+            <section class="hero" id="home">
+                <div class="hero-content">
+                    <h1>Embark on an interactive tour of our Solar System</h1>
+                    <p>Meet the planets, hear their stories, and explore fascinating facts brought to life with real-time 3D visuals. All you need is a sense of curiosity.</p>
+                    <div class="hero-actions">
+                        <a class="button primary" href="solar-system.html">Launch the Solar System</a>
+                        <a class="button secondary" href="#about">Learn more</a>
+                    </div>
+                </div>
+                <div class="hero-visual" role="presentation" aria-hidden="true">
+                    <div class="planet planet-sun"></div>
+                    <div class="planet planet-earth"></div>
+                    <div class="orbit orbit-one"></div>
+                    <div class="orbit orbit-two"></div>
+                </div>
+            </section>
+
+            <section class="section" id="about">
+                <div class="section-heading">
+                    <h2>Designed for explorers of all ages</h2>
+                    <p>Celestial Explorer combines approachable storytelling with accurate planetary data. Whether you are guiding a classroom or learning solo, you are just a click away from orbit.</p>
+                </div>
+                <div class="grid two-column">
+                    <article class="card">
+                        <h3>Guided discovery</h3>
+                        <p>Click any planet to uncover quick facts and vivid descriptions. Each world has a dedicated info panel with hand-picked highlights.</p>
+                    </article>
+                    <article class="card">
+                        <h3>AI-powered tales</h3>
+                        <p>Use the built-in Gemini prompts to spin short fiction or reveal hidden trivia about your favourite planet. Perfect for sparking imagination.</p>
+                    </article>
+                </div>
+            </section>
+
+            <section class="section" id="features">
+                <div class="section-heading">
+                    <h2>What makes the experience special?</h2>
+                </div>
+                <div class="grid three-column">
+                    <article class="card feature-card">
+                        <h3>Smooth 3D controls</h3>
+                        <p>Pan, zoom, and orbit effortlessly with mouse or touch controls powered by Three.js.</p>
+                    </article>
+                    <article class="card feature-card">
+                        <h3>Immersive ambience</h3>
+                        <p>Dynamic lighting, shimmering stars, and ambient colours create a cosmic backdrop for your journey.</p>
+                    </article>
+                    <article class="card feature-card">
+                        <h3>Accessible insights</h3>
+                        <p>Clear typography and responsive layout ensure the solar system feels great on desktops and tablets alike.</p>
+                    </article>
+                </div>
+            </section>
+
+            <section class="section experience" id="experience">
+                <div class="section-heading">
+                    <h2>Ready to travel beyond Earth?</h2>
+                    <p>Follow these quick tips to get the most out of the simulation.</p>
+                </div>
+                <ol class="experience-steps">
+                    <li><span class="step-number">1</span> Launch the app and drag to orbit around the Sun.</li>
+                    <li><span class="step-number">2</span> Click a planet to open its info panel filled with fast facts.</li>
+                    <li><span class="step-number">3</span> Ask Gemini for a story or a secret to discover something new.</li>
+                </ol>
+                <a class="button primary" href="solar-system.html">Start your journey</a>
             </section>
         </main>
 
-        <footer>
-            <p>&copy; 2025 My Web App. All rights reserved.</p>
+        <footer class="site-footer">
+            <p>&copy; 2025 Celestial Explorer. Crafted for curious minds among the stars.</p>
         </footer>
     </div>
-    
-    <script src="js/main.js"></script>
 </body>
 </html>
